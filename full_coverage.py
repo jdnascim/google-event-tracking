@@ -69,7 +69,7 @@ class full_coverage:
         except Exception:
             pass
 
-    def full_cover_urls(self, real_url=True):
+    def link_list(self, real_url=True):
         """ given the google news full coverage of an event, get the urls """
 
         page = 1
@@ -104,8 +104,26 @@ class full_coverage:
             self.links = set(["https://news.google.com" + link[1:]
                               for link in Surls])
         else:
-            self.links = set([requests.get(
-                "https://news.google.com" + link[1:]).url for link in Surls])
+            self.links = set()
+            cc = 1
+            tt = len(Surls)
+            for link in Surls:
+                try:
+                    real_link = requests.get("https://news.google.com"
+                                             + link[1:]).url
+                    self.links.add(real_link)
+                    print('\x1b[6;30;42m' + real_link + " ("
+                          + str(round(cc*100/tt, 2)) + "%)" + '\x1b[0m')
+                    cc += 1
+                except requests.exceptions.ConnectionError as e:
+                    print(e)
+                    continue
+                except requests.exceptions.InvalidSchema as e:
+                    print(e)
+                    continue
+                except requests.exceptions.TooManyRedirects as e:
+                    print(e)
+                    continue
 
     @classmethod
     def __youtube_download(cls, url, alarm=1000):
@@ -121,6 +139,12 @@ class full_coverage:
             print(e)
         finally:
             signal.alarm(0)
+
+    def list_images(self):
+        for l in self.links:
+            print('\x1b[6;30;42m' + l + '\x1b[0m')
+            for im in self.__urlImageGenerator(l):
+                print(im)
 
     @classmethod
     def __request_download(cls, url, overwrite=False):
@@ -147,9 +171,6 @@ class full_coverage:
 
                         if bool(filetype.guess_mime(output)) is True:
                             print(im, output)
-                            return True
-                        else:
-                            return False
                     else:
                         print("File " + output + " exists.")
                         return False
@@ -157,12 +178,16 @@ class full_coverage:
                     if os.path.isfile(cls.fileplusextension(output)):
                         os.remove(cls.fileplusextension(output))
                     raise
-                except Exception:
+                except Exception as e:
+                    print(e)
                     raise
             except requests.exceptions.ConnectionError as e:
                 print(e)
                 continue
             except requests.exceptions.InvalidSchema as e:
+                print(e)
+                continue
+            except requests.exceptions.TooManyRedirects as e:
                 print(e)
                 continue
 
@@ -204,16 +229,16 @@ class full_coverage:
                 os.mkdir(seqdir)
                 os.chdir(seqdir)
 
-                self.__youtube_download(url)
-
                 self.__request_download(url)
+
+                self.__youtube_download(url)
 
                 print('\x1b[6;30;42m' + "Scrap Finished for Link "
                       + str(url) + " ("
                       + str(round(row_count*100/total_row, 4)) + "%)"
                       + '\x1b[0m')
 
-                os.chdir("../../")
+                os.chdir("../")
                 seq += 1
                 seqdir = os.path.realpath(directory + "/" + str(seq))
 
